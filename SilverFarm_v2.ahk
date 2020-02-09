@@ -10,12 +10,11 @@ SendMode Input  ; Recommended for new scripts due to its superior speed and reli
 SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #SingleInstance Force ; Makes sure the script only runs one at a time
 
-
+;Income and bet determine how often to roll the gacha
 Global BaseIncome = 100
 Global GachaBet = 100
 
 AutoGachaSetup()
-
 return 
 
 !g::
