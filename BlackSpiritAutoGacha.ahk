@@ -122,6 +122,7 @@ RollGacha()
 AutoGachaSetup()
 {
 	global gachaAmount
+	global gachaBetStr
 	global txtRollTimer
 	rollTimer := Round(timeBetweenRolls/1000, 1)
 
@@ -160,7 +161,7 @@ IncomeSetupButtonOK:
 	}
 
 	global gachaString
-	gachaString := gachaAmount[GachaBet]
+	gachaString := gachaBetStr[GachaBet]
 
 	SetTimeBetweenRolls(gachaAmount[gachaBet], myIncome)
 
@@ -218,10 +219,20 @@ CreateIniFile(destFileStr)
 	SaveSettings()
 
 	global gachaAmount := []
-	GetGachaBets()
+	GetGachaAmounts()
 	srcStrTemp := ""
 	
 	for index, element in gachaAmount
+	{
+		srcStrTemp .= index "=" element "`n"
+	}
+	IniWrite, %srcStrTemp%, %destFileStr%, GachaAmounts
+
+	global gachaBetStr := []
+	GetGachaBets()
+	srcStrTemp := ""
+	
+	for index, element in gachaBetStr
 	{
 		srcStrTemp .= index "=" element "`n"
 	}
@@ -283,13 +294,22 @@ ParseIniFile(srcFileStr)
 	
 	AssignHotKeys(StartHotKey, MenuHotKey)
 
-	IniRead, iniStrOut, %srcFileStr%, GachaBets
+	IniRead, iniStrOut, %srcFileStr%, GachaAmounts
 	iniStrArray := StrSplit(iniStrOut, "`n")
 
 	Global gachaAmount := []
 	for index, element in iniStrArray
 	{
 		gachaAmount.Push(SubStr(element, InStr(element, "=") + 1))
+	}
+
+	IniRead, iniStrOut, %srcFileStr%, GachaBets
+	iniStrArray := StrSplit(iniStrOut, "`n")
+
+	Global gachaBetStr := []
+	for index, element in iniStrArray
+	{
+		gachaBetStr.Push(SubStr(element, InStr(element, "=") + 1))
 	}
 
 	IniRead, iniStrOut, %srcFileStr%, Messages
@@ -334,7 +354,7 @@ SaveSettings()
 	IniWrite, %srcStrTemp%, BlackSpiritAutoGacha.ini, UserSettings
 }
 
-GetGachaBets()
+GetGachaAmounts()
 {
 	global gachaAmount
 
@@ -345,6 +365,19 @@ GetGachaBets()
 	gachaAmount.Push(100000)
 	gachaAmount.Push(500000)
 	gachaAmount.Push(1000000)
+}
+
+GetGachaBets()
+{
+	global gachaBetStr
+
+	gachaBetStr.Push("100")
+	gachaBetStr.Push("1k")
+	gachaBetStr.Push("5k")
+	gachaBetStr.Push("25k")
+	gachaBetStr.Push("100k")
+	gachaBetStr.Push("500k")
+	gachaBetStr.Push("1m")
 }
 
 GetFlavorText()
