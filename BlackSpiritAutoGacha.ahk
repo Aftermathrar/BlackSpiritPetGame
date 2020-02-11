@@ -45,8 +45,8 @@ return
 StartPause:
 if (isFarmingActive == 0)
 {
-	MsgBox, Starting script
-	isFarmingActive = True
+	global timeBetweenRolls
+	isFarmingActive = 1
 
 	SendFarmMessage()
 	SetTimer, SendFarmMessage, 61000
@@ -164,6 +164,13 @@ IncomeSetupButtonOK:
 	gachaString := gachaBetStr[GachaBet]
 
 	SetTimeBetweenRolls(gachaAmount[gachaBet], myIncome)
+	
+	;Check if farming is active, update timer if so
+	global isFarmingActive
+	if (isFarmingActive == 1)
+	{
+		SetTimer, RollGacha, %timeBetweenRolls%
+	}
 
 	AssignHotKeys(StartHotKey, MenuHotKey)
 
