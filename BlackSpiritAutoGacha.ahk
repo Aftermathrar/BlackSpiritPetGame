@@ -25,7 +25,7 @@ else
 {
 	;Initialize gacha tracking variables
 	Global BaseIncome = 100
-	Global GachaBet = 100
+	Global gachaBet = 1
 	Global loopCount = 0
 	Global timeBetweenRolls = 61000
 	Global gachaString = 100
@@ -112,19 +112,45 @@ SendFarmMessage()
 
 		global farmMessageTimer := A_TickCount
 
-		;Sleep 200
+		Sleep 3000
+		LootBoxCheck()
 	}
 
 	return
 }
 
+LootBoxCheck()
+{
+	IfExist, ImageReact1.PNG
+	{
+		ImageSearch, FoundX, FoundY, 0, 0, A_ScreenWidth, A_ScreenHeight, ImageReact1.PNG
+		If (ErrorLevel = 0) 
+		{
+			MouseClick, Left, %FoundX%, %FoundY%
+		}
+	}
+}
+
 RollGacha()
 {
-	silver := RemainingSilver()
+	global gachaListboxSelect
+	global gachaBetStr
+
+	for index, element in gachaListboxSelect
+	{
+		silver := RemainingSilver(element)
+		if (silver >= 0)
+		{
+			global gachaString
+			gachaString := gachaBetStr[element]
+			break
+		}
+	}
 	if (WinExist("ahk_exe Discord.exe") && silver >= 0)
 	{
 		global slowModeTimer
 		global farmMessageTimer
+	
 
 		if(A_TickCount - slowModeTimer > 6500 && A_TickCount - farmMessageTimer <= 54000)
 		{
@@ -138,46 +164,49 @@ RollGacha()
 	return
 }
 
-RemainingSilver()
+RemainingSilver(i)
 {
 	global mySilver
-	global gachaListboxSelect
 	global gachaAmount
 
-	silver := mySilver - gachaAmount[gachaListboxSelect]
+	silver := mySilver - gachaAmount[i]
 	return silver
 }
 
 AutoGachaSetup()
 {
 	global gachaAmount
-	global gachaBetStr
+	global mySilver
 	global txtRollTimer
-	global TimerOverride
+	global timerSlider
 	rollTimer := Round(timeBetweenRolls/1000, 1)
 
-	Gui, IncomeSetup:New, , "Setup Auto-Gacha"
+	Gui, IncomeSetup:New, , Setup Auto-Gacha
 	Gui, Add, Text,, Silver Income:
-	Gui, Add, Text, r3, Gacha Amount:
-	Gui, Add, Text, vtxtRollTimer r3, Gacha roll every`n%rollTimer% seconds
+	Gui, Add, Text, , Gacha Amount:
+	Gui, Add, Slider, vtimerSlider gSliderChange Range7-31 TickInterval6 w80, %rollTimer%
+	Gui, Add, Text, vtxtRollTimer r2.5, Gacha roll every`n%rollTimer% seconds
 	Gui, Add, Text,, Start/Pause:
 	Gui, Add, Text,, Show Menu:
 	Gui, Add, Edit, vBaseIncome w100 ym, %BaseIncome% 
-	Gui, Add, ListBox, r7 vGachaBet gBetChange +AltSubmit, 100|1k|5k|25k|100k|500k|1m
+	Gui, Add, ListBox, 8 r7 vGachaBet +AltSubmit, 100|1k|5k|25k|100k|500k|1m
 	Gui, Add, HotKey, vStartHotKey, %StartHotKey%
 	Gui, Add, HotKey, vMenuHotKey, %MenuHotKey%
 	Gui, Add, Button, default w80, OK 
 	Gui, Add, Button, ym, Exit Script
 	Gui, Add, Button, , Add New Message
 	Gui, Add, Button, , View Pet
-	Gui, Add, Text, , Manual Timer
-	Gui, Add, Edit, vTimerOverride
+	Gui, Add, Text, , Silver
+	Gui, Add, Edit, vmySilver
 	Gui, Show,, Setup Auto-Gacha
 	HotKey, %StartHotKey%, Off
 	HotKey, %MenuHotKey%, Off
 
-	GuiControl, Choose, Listbox1, %gachaListboxSelect%
-	GuiControl, , Edit2, %rollTimer%
+	for index, element in gachaListboxSelect
+	{
+		GuiControl, Choose, Listbox1, %element%
+	}
+	GuiControl, , Edit2, %mySilver%
 
 	return
 	
@@ -193,17 +222,20 @@ IncomeSetupButtonOK:
 		BaseIncome = %myIncome%
 	}
 
-	global gachaString
-	gachaString := gachaBetStr[GachaBet]
+	if (gachaBet == "")
+	{
+		gachaBet := 1
+	}
 
-	if(TimerOverride == "")
+	Sort gachaBet, R D|
+
+	global gachaListboxSelect := []
+	Loop, Parse, gachaBet, |
 	{
-		SetTimeBetweenRolls(gachaAmount[gachaBet], myIncome)
+		gachaListboxSelect.Push(A_LoopField)
 	}
-	else
-	{
-		ManualSetTimeBetweenRolls(TimerOverride*1000)
-	}
+
+	ManualSetTimeBetweenRolls(timerSlider*1000)
 	
 	;Check if farming is active, update timer if so
 	global isFarmingActive
@@ -220,15 +252,13 @@ IncomeSetupGuiClose:
 	HotKey, %MenuHotKey%, On
 	return
 
-BetChange:
-	GuiControlGet, gachaListboxSelect, , ListBox1
-	GuiControlGet, curIncome, , Edit1
-	SetTimeBetweenRolls(gachaAmount[gachaListboxSelect], curIncome)
-	rollTimer := Round(timeBetweenRolls/1000, 1)
-	
-	GuiControl, , txtRollTimer, Gacha roll every`n%rollTimer% seconds
-	GuiControl, , Edit2, %rollTimer%
+IncomeSetupButtonAddNewMessage:
+	;Gui, Hide
+	CreateNewMessage()
+	return
 
+SliderChange:
+	GuiControl, , txtRollTimer, Gacha roll every`n%timerSlider% seconds
 	return
 }
 
@@ -255,10 +285,76 @@ ManualSetTimeBetweenRolls(t)
 	return
 }
 
-IncomeSetupButtonAddNewMessage:
+CreateNewMessage()
 {
-	MsgBox, Not implemented yet
+	global newFlavorText
+
+	Gui, NewMessage:New, , NewFlavorText
+	Gui, Add, Text, , New message to add. Select variables to add.`nMath not supported currently.
+	Gui, Add, Button, section, Loop Count
+	Gui, Add, Button, ys, Gacha Bet
+	Gui, Add, Button, ys, Income
+	Gui, Add, Button, section ys, Silver
+	Gui, Add, Edit, xm w260 vnewFlavorText
+	Gui, Add, Button, default w80, OK
+	Gui, Show
+
 	return
+
+NewMessageButtonOK:
+	Gui, Submit, NoHide
+	Transform, newFlavorText, DeRef, %newFlavorText%
+	PreviewNewMessage(newFlavorText)
+	return
+
+NewMessageButtonLoopCount:
+	AppendVariable("%loopCount% ")
+	Return
+	
+NewMessageButtonGachaBet:
+	AppendVariable("%gachaString% ")
+	Return
+	
+NewMessageButtonIncome:
+	AppendVariable("%BaseIncome% ")
+	Return
+
+NewMessageButtonSilver:
+	AppendVariable("%mySilver% ")
+	Return
+}
+
+AppendVariable(sVariable)
+{
+	GuiControlGet, sTemp, , Edit1
+	GuiControl, , Edit1, % sTemp . sVariable
+	GuiControl, Focus, Edit1
+	SendMessage, 0xB1, -2, -1, Edit1
+	Return
+}
+
+PreviewNewMessage(sPreview)
+{
+	Gui, StringPreview:New, , PreviewMessage
+	Gui, Add, Text, , Preview:`n%sPreview%
+	Gui, Add, Button, section default w80, Confirm
+	Gui, Add, Button, ys w80, Cancel
+	Gui, Show
+	Gui +LastFound
+	WinWaitClose
+	return
+
+StringPreviewButtonConfirm:
+	global flavorText
+	flavorText.Push(sPreview)
+	Gui, Submit
+	Gui, NewMessage:Hide
+	return
+
+StringPreviewButtonCancel:
+StringPreviewGuiClose:
+	Gui, StringPreview:Destroy
+	Return 
 }
 
 IncomeSetupButtonViewPet:
@@ -332,9 +428,10 @@ ParseIniFile(srcFileStr)
 {
 	global loopCount
 	global BaseIncome
+	global mySilver
 	global timeBetweenRolls
 	global gachaString
-	global gachaListboxSelect
+	global gachaBet
 	global StartHotKey
 	global MenuHotKey
 
@@ -345,11 +442,18 @@ ParseIniFile(srcFileStr)
 
 	loopCount := SubStr(iniStrArray[1], instr(iniStrArray[1], "=") + 1)
 	BaseIncome := SubStr(iniStrArray[2], instr(iniStrArray[2], "=") + 1)
-	timeBetweenRolls := SubStr(iniStrArray[3], instr(iniStrArray[3], "=") + 1)
-	gachaString  := SubStr(iniStrArray[4], instr(iniStrArray[4], "=") + 1)
-	gachaListboxSelect := SubStr(iniStrArray[5], instr(iniStrArray[5], "=") + 1)
-	StartHotKey  := SubStr(iniStrArray[6], instr(iniStrArray[6], "=") + 1)
-	MenuHotKey  := SubStr(iniStrArray[7], instr(iniStrArray[7], "=") + 1)
+	mySilver := SubStr(iniStrArray[3], instr(iniStrArray[3], "=") + 1)
+	timeBetweenRolls := SubStr(iniStrArray[4], instr(iniStrArray[4], "=") + 1)
+	gachaString  := SubStr(iniStrArray[5], instr(iniStrArray[5], "=") + 1)
+	gachaBet := SubStr(iniStrArray[6], instr(iniStrArray[6], "=") + 1)
+	StartHotKey  := SubStr(iniStrArray[7], instr(iniStrArray[7], "=") + 1)
+	MenuHotKey  := SubStr(iniStrArray[8], instr(iniStrArray[8], "=") + 1)
+
+	global gachaListboxSelect := []
+	Loop, Parse, gachaBet, |
+	{
+		gachaListboxSelect.Push(A_LoopField)
+	}
 	
 	AssignHotKeys(StartHotKey, MenuHotKey)
 
@@ -403,14 +507,24 @@ SaveSettings()
 {
 	global loopCount
 	global BaseIncome
+	global mySilver
 	global timeBetweenRolls
 	global gachaString
 	global gachaListboxSelect
 	global StartHotKey
 	global MenuHotKey
 
-	srcStrTemp := "LoopCount=" loopCount "`nIncome=" BaseIncome "`nGachaTimer=" timeBetweenRolls "`nGachaString=" gachaString "`nGachaListBox=" gachaListboxSelect "`nStartPause=" StartHotKey "`nMenu=" MenuHotKey
+	srcStrTemp := "LoopCount=" loopCount "`nIncome=" BaseIncome "`nSilverBalance=" mySilver "`nGachaTimer=" timeBetweenRolls "`nGachaString=" gachaString "`nGachaListBox=" gachaBet "`nStartPause=" StartHotKey "`nMenu=" MenuHotKey
 	IniWrite, %srcStrTemp%, BlackSpiritAutoGacha.ini, UserSettings
+
+	srcStrTemp := ""
+	global flavorText
+
+	for index, element in flavorText
+	{
+		srcStrTemp .= index "=" element "`n"
+	}
+	IniWrite, %srcStrTemp%, BlackSpiritAutoGacha.ini, Messages
 }
 
 GetGachaAmounts()
