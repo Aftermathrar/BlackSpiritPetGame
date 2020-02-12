@@ -11,6 +11,9 @@ SetWorkingDir %A_ScriptDir%  ; Ensures a consistent starting directory.
 #SingleInstance Force ; Makes sure the script only runs one at a time
 
 isFarmingActive = 0
+mySilver = 0
+slowModeTimer = 0
+farmMessageTimer = 0
 
 iniCheck := FileExist("BlackSpiritAutoGacha.ini")
 if (iniCheck != "")
@@ -51,7 +54,6 @@ if (isFarmingActive == 0)
 	SendFarmMessage()
 	SetTimer, SendFarmMessage, 61000
 
-	RollGacha()
 	SetTimer, RollGacha, %timeBetweenRolls%
 }
 else
@@ -94,14 +96,23 @@ SendFarmMessage()
 		Random, i, 1, flavorText.MaxIndex()
 		Transform, farmString, Deref, % flavorText[i]
 	}
+
+	global slowModeTimer
 	
-	if WinExist("ahk_exe Discord.exe")
+	if (WinExist("ahk_exe Discord.exe") && (A_TickCount - slowModeTimer > 6500))
 	{
 		WinActivate
 		Send, %farmString% {Enter}	
 
+		global BaseIncome
+		global mySilver += BaseIncome
 		loopCount := ++loopCount
-		Sleep 200
+
+		slowModeTimer := A_TickCount
+
+		global farmMessageTimer := A_TickCount
+
+		;Sleep 200
 	}
 
 	return
@@ -109,21 +120,40 @@ SendFarmMessage()
 
 RollGacha()
 {
-	if WinExist("ahk_exe Discord.exe")
+	silver := RemainingSilver()
+	if (WinExist("ahk_exe Discord.exe") && silver >= 0)
 	{
-		WinActivate
-		global gachaString
-		Send, {!}gacha %gachaString% {enter}
+		global slowModeTimer
+		global farmMessageTimer
+
+		if(A_TickCount - slowModeTimer > 6500 && A_TickCount - farmMessageTimer <= 54000)
+		{
+			WinActivate
+			global gachaString
+			Send, {!}gacha %gachaString% {enter}
+			slowModeTimer := A_TickCount
+			global mySilver := silver
+		}
 	}
 	return
 }
 
+RemainingSilver()
+{
+	global mySilver
+	global gachaListboxSelect
+	global gachaAmount
+
+	silver := mySilver - gachaAmount[gachaListboxSelect]
+	return silver
+}
 
 AutoGachaSetup()
 {
 	global gachaAmount
 	global gachaBetStr
 	global txtRollTimer
+	global TimerOverride
 	rollTimer := Round(timeBetweenRolls/1000, 1)
 
 	Gui, IncomeSetup:New, , "Setup Auto-Gacha"
@@ -140,11 +170,14 @@ AutoGachaSetup()
 	Gui, Add, Button, ym, Exit Script
 	Gui, Add, Button, , Add New Message
 	Gui, Add, Button, , View Pet
+	Gui, Add, Text, , Manual Timer
+	Gui, Add, Edit, vTimerOverride
 	Gui, Show,, Setup Auto-Gacha
 	HotKey, %StartHotKey%, Off
 	HotKey, %MenuHotKey%, Off
 
 	GuiControl, Choose, Listbox1, %gachaListboxSelect%
+	GuiControl, , Edit2, %rollTimer%
 
 	return
 	
@@ -163,7 +196,14 @@ IncomeSetupButtonOK:
 	global gachaString
 	gachaString := gachaBetStr[GachaBet]
 
-	SetTimeBetweenRolls(gachaAmount[gachaBet], myIncome)
+	if(TimerOverride == "")
+	{
+		SetTimeBetweenRolls(gachaAmount[gachaBet], myIncome)
+	}
+	else
+	{
+		ManualSetTimeBetweenRolls(TimerOverride*1000)
+	}
 	
 	;Check if farming is active, update timer if so
 	global isFarmingActive
@@ -174,7 +214,7 @@ IncomeSetupButtonOK:
 
 	AssignHotKeys(StartHotKey, MenuHotKey)
 
-GuiClose:
+IncomeSetupGuiClose:
 	Gui, Hide
 	HotKey, %StartHotKey%, On
 	HotKey, %MenuHotKey%, On
@@ -187,6 +227,7 @@ BetChange:
 	rollTimer := Round(timeBetweenRolls/1000, 1)
 	
 	GuiControl, , txtRollTimer, Gacha roll every`n%rollTimer% seconds
+	GuiControl, , Edit2, %rollTimer%
 
 	return
 }
@@ -195,6 +236,17 @@ SetTimeBetweenRolls(bet, income)
 {
 	;Get seconds between rolls by dividing 61 seconds by possible rolls per minute
 	global timeBetweenRolls := Ceil(61000 * bet / income)
+
+	if (timeBetweenRolls < 6100)
+	{
+		timeBetweenRolls = 6100
+	}
+	return
+}
+
+ManualSetTimeBetweenRolls(t)
+{
+	global timeBetweenRolls := t
 
 	if (timeBetweenRolls < 6100)
 	{
