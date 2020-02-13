@@ -1,4 +1,4 @@
-;Scripted poorly by Aftermath, version 0.4
+;Scripted poorly by Aftermath, version 0.5
 
 ;Use Alt + D to start and pause the script
 ;Alt + F will rerun the Gacha setup
@@ -303,8 +303,8 @@ CreateNewMessage()
 
 NewMessageButtonOK:
 	Gui, Submit, NoHide
-	Transform, newFlavorText, DeRef, %newFlavorText%
-	PreviewNewMessage(newFlavorText)
+	Transform, sPreview, DeRef, %newFlavorText%
+	PreviewNewMessage(sPreview)
 	return
 
 NewMessageButtonLoopCount:
@@ -335,6 +335,7 @@ AppendVariable(sVariable)
 
 PreviewNewMessage(sPreview)
 {
+	global newFlavorText
 	Gui, StringPreview:New, , PreviewMessage
 	Gui, Add, Text, , Preview:`n%sPreview%
 	Gui, Add, Button, section default w80, Confirm
@@ -346,7 +347,7 @@ PreviewNewMessage(sPreview)
 
 StringPreviewButtonConfirm:
 	global flavorText
-	flavorText.Push(sPreview)
+	flavorText.Push(newFlavorText)
 	Gui, Submit
 	Gui, NewMessage:Hide
 	return
@@ -519,7 +520,10 @@ SaveSettings()
 
 	srcStrTemp := ""
 	global flavorText
-
+	if (flavorText = "")
+	{
+		GetFlavorText()
+	}
 	for index, element in flavorText
 	{
 		srcStrTemp .= index "=" element "`n"
