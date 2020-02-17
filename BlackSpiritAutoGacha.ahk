@@ -54,6 +54,8 @@ if (isFarmingActive == 0)
 	SendFarmMessage()
 	SetTimer, SendFarmMessage, 61000
 
+	Sleep 200
+	RollGacha()
 	SetTimer, RollGacha, %timeBetweenRolls%
 }
 else
@@ -99,7 +101,7 @@ SendFarmMessage()
 
 	global slowModeTimer
 	
-	if (WinExist("ahk_exe Discord.exe") && (A_TickCount - slowModeTimer > 6500))
+	if (WinExist("ahk_exe Discord.exe")) ;&& (A_TickCount - slowModeTimer > 6500))
 	{
 		WinActivate
 		Send, %farmString% {Enter}	
@@ -112,24 +114,32 @@ SendFarmMessage()
 
 		global farmMessageTimer := A_TickCount
 
-		Sleep 3000
+		Random, SleepTimerForImageCheck, 2000, 5000
+		Sleep SleepTimerForImageCheck
 		LootBoxCheck()
 	}
 
 	return
 }
 
+f8::
 LootBoxCheck()
 {
 	IfExist, ImageReact1.PNG
 	{
-		ImageSearch, FoundX, FoundY, 0, 0, A_ScreenWidth, A_ScreenHeight, ImageReact1.PNG
-		If (ErrorLevel = 0) 
+		ImageSearch, FoundX, FoundY, 1920, -356, 3000, 1564, *10 ImageReact1.PNG
+		If (ErrorLevel == 0) 
 		{
-			MouseClick, Left, %FoundX%, %FoundY%
+			;MouseClick, Left, %FoundX%, %FoundY%
+			MouseMove, %foundX%, %foundY%
 		}
 	}
+	else
+	{
+		MsgBox, Emoji image file could not be found
+	}
 }
+Return
 
 RollGacha()
 {
@@ -152,7 +162,7 @@ RollGacha()
 		global farmMessageTimer
 	
 
-		if(A_TickCount - slowModeTimer > 6500 && A_TickCount - farmMessageTimer <= 54000)
+		;if(A_TickCount - slowModeTimer > 6500 && A_TickCount - farmMessageTimer <= 54000)
 		{
 			WinActivate
 			global gachaString
@@ -179,13 +189,13 @@ AutoGachaSetup()
 	global mySilver
 	global txtRollTimer
 	global timerSlider
-	rollTimer := Round(timeBetweenRolls/1000, 1)
+	rollTimer := Round(61000/timeBetweenRolls, 0)
 
 	Gui, IncomeSetup:New, , Setup Auto-Gacha
 	Gui, Add, Text,, Silver Income:
 	Gui, Add, Text, , Gacha Amount:
-	Gui, Add, Slider, vtimerSlider gSliderChange Range7-31 TickInterval6 w80, %rollTimer%
-	Gui, Add, Text, vtxtRollTimer r2.5, Gacha roll every`n%rollTimer% seconds
+	Gui, Add, Slider, vtimerSlider gSliderChange Range1-7 TickInterval6 w80, %rollTimer%
+	Gui, Add, Text, vtxtRollTimer r2.5, Gacha roll %rollTimer%`ntimes/minute
 	Gui, Add, Text,, Start/Pause:
 	Gui, Add, Text,, Show Menu:
 	Gui, Add, Edit, vBaseIncome w100 ym, %BaseIncome% 
@@ -235,7 +245,7 @@ IncomeSetupButtonOK:
 		gachaListboxSelect.Push(A_LoopField)
 	}
 
-	ManualSetTimeBetweenRolls(timerSlider*1000)
+	ManualSetTimeBetweenRolls(timerSlider)
 	
 	;Check if farming is active, update timer if so
 	global isFarmingActive
@@ -258,7 +268,7 @@ IncomeSetupButtonAddNewMessage:
 	return
 
 SliderChange:
-	GuiControl, , txtRollTimer, Gacha roll every`n%timerSlider% seconds
+	GuiControl, , txtRollTimer, Gacha roll %timerSlider%`ntimes/minute
 	return
 }
 
@@ -276,12 +286,8 @@ SetTimeBetweenRolls(bet, income)
 
 ManualSetTimeBetweenRolls(t)
 {
-	global timeBetweenRolls := t
-
-	if (timeBetweenRolls < 6100)
-	{
-		timeBetweenRolls = 6100
-	}
+	;Separate function to allow for different timer calculations
+	global timeBetweenRolls := Ceil(61000/t)
 	return
 }
 
